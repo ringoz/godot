@@ -30,6 +30,9 @@ web_files = [
     "os_web.cpp",
 ]
 
+if env["library_type"] != "executable":
+    web_files += ["libgodot_web.cpp"]
+
 if env["target"] == "editor":
     env.add_source_files(web_files, "editor/*.cpp")
 
@@ -68,6 +71,9 @@ sys_env["ENV"]["EMCC_CLOSURE_ARGS"] = sys_env["ENV"].get("EMCC_CLOSURE_ARGS", ""
 for ext in sys_env["JS_EXTERNS"]:
     sys_env["ENV"]["EMCC_CLOSURE_ARGS"] += " --externs " + ext.abspath
 sys_env["ENV"]["EMCC_CLOSURE_ARGS"] = sys_env["ENV"]["EMCC_CLOSURE_ARGS"].strip()
+
+if env["library_type"] != "executable":
+    env["EXPORTED_FUNCTIONS"] += ["_libgodot_create_godot_instance", "_libgodot_destroy_godot_instance"]
 
 if len(env["EXPORTED_FUNCTIONS"]):
     sys_env.Append(LINKFLAGS=["-sEXPORTED_FUNCTIONS=" + repr(sorted(list(set(env["EXPORTED_FUNCTIONS"]))))])
