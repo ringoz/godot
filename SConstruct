@@ -848,6 +848,8 @@ if env.msvc:
         env["OPTIMIZELEVEL"] = "/O1"
         env.AppendUnique(LINKFLAGS=["/OPT:REF"])
         if env["optimize"] == "size_extra":
+            if env["use_llvm"]:
+                env["OPTIMIZELEVEL"] += " /clang:-Oz"
             env.AppendUnique(CPPDEFINES=["SIZE_EXTRA"])
     elif env["optimize"] == "debug" or env["optimize"] == "none":
         env["OPTIMIZELEVEL"] = "/Od"
@@ -895,6 +897,8 @@ else:
     elif env["optimize"].startswith("size"):
         env["OPTIMIZELEVEL"] = "-Os"
         if env["optimize"] == "size_extra":
+            if env["use_llvm"]:
+                env["OPTIMIZELEVEL"] = "-Oz"
             env.AppendUnique(CPPDEFINES=["SIZE_EXTRA"])
     elif env["optimize"] == "debug":
         env["OPTIMIZELEVEL"] = "-Og"
