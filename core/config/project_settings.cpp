@@ -857,6 +857,10 @@ Error ProjectSettings::_setup(const String &p_path, const String &p_main_pack, b
 	}
 
 	if (!found) {
+		if (err == ERR_FILE_NOT_FOUND) {
+			// No project.godot found — boot with engine defaults (res:// = cwd).
+			return OK;
+		}
 		return err;
 	}
 
