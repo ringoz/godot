@@ -43,9 +43,7 @@
 #include "scene/theme/theme_db.h"
 #include "servers/text/text_server.h"
 
-#ifdef BROTLI_ENABLED
 #include "scene/theme/default_font.gen.h"
-#endif
 
 static const int default_font_size = 16;
 
@@ -1399,14 +1397,12 @@ void make_default_theme(float p_scale, Ref<Font> p_font, TextServer::SubpixelPos
 		// embedded in both editor and export template binaries.
 		Ref<FontFile> dynamic_font;
 		dynamic_font.instantiate();
-#ifdef BROTLI_ENABLED
 		dynamic_font->set_data_ptr(_font_OpenSans_SemiBold, _font_OpenSans_SemiBold_size);
 		dynamic_font->set_subpixel_positioning(p_font_subpixel);
 		dynamic_font->set_hinting(p_font_hinting);
 		dynamic_font->set_antialiasing(p_font_antialiasing);
 		dynamic_font->set_multichannel_signed_distance_field(p_font_msdf);
 		dynamic_font->set_generate_mipmaps(p_font_generate_mipmaps);
-#endif
 		default_font = dynamic_font;
 	}
 
