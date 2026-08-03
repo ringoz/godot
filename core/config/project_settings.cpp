@@ -1459,7 +1459,9 @@ TypedArray<Dictionary> ProjectSettings::get_global_class_list() {
 	} else {
 #ifndef TOOLS_ENABLED
 		// Script classes can't be recreated in exported project, so print an error.
-		ERR_PRINT("Could not load global script cache.");
+		if (FileAccess::exists(get_global_class_list_path())) {
+			ERR_PRINT("Could not load global script cache.");
+		}
 #endif
 	}
 
