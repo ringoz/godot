@@ -209,8 +209,10 @@ const GodotFS = {
 		copy_to_fs: function (path, buffer) {
 			const idx = path.lastIndexOf('/');
 			let dir = '/';
+			let name = path;
 			if (idx > 0) {
 				dir = path.slice(0, idx);
+				name = path.slice(idx + 1);
 			}
 			try {
 				FS.stat(dir);
@@ -221,7 +223,8 @@ const GodotFS = {
 				}
 				FS.mkdirTree(dir);
 			}
-			FS.writeFile(path, new Uint8Array(buffer));
+			// canOwn hands `buffer` to MEMFS without copying (Uint8Array views).
+			FS.createDataFile(dir, name, buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer), true, true, true);
 		},
 	},
 };
