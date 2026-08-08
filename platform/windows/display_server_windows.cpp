@@ -1521,6 +1521,36 @@ int DisplayServerWindows::screen_get_dpi(int p_screen) const {
 	return data.dpi;
 }
 
+typedef struct {
+	int current_index;
+	int screen;
+	DEVICE_SCALE_FACTOR scale;
+} EnumScaleData;
+
+static BOOL CALLBACK _MonitorEnumProcScale(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
+	EnumScaleData *data = (EnumScaleData *)dwData;
+
+	data->current_index++;
+
+	if (data->current_index == data->screen) {
+		GetScaleFactorForMonitor(hMonitor, &data->scale);
+		return FALSE;
+	}
+	return TRUE;
+}
+
+float DisplayServerWindows::screen_get_scale(int p_screen) const {
+	_THREAD_SAFE_METHOD_
+
+	p_screen = _get_screen_index(p_screen);
+
+	EnumScaleData data = { -1, p_screen, SCALE_100_PERCENT };
+	EnumDisplayMonitors(nullptr, nullptr, _MonitorEnumProcScale, (LPARAM)&data);
+
+	ERR_FAIL_COND_V_MSG(data.current_index < p_screen, 1.0f, vformat("Screen index %d out of range [0, %d].", p_screen, data.current_index));
+	return float(data.scale) / float(SCALE_100_PERCENT);
+}
+
 Color DisplayServerWindows::screen_get_pixel(const Point2i &p_position) const {
 	Point2i pos = p_position + _get_screens_origin();
 
