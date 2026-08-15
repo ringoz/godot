@@ -59,6 +59,12 @@ sys_env.AddJSPost([
 if env["javascript_eval"]:
     sys_env.AddJSLibraries(["js/libs/library_godot_javascript_singleton.js"])
 
+# SConstruct adds a bare "-s" (wasm-ld --strip-all) when debug_symbols is off,
+# which would strip the wasm name section. Always emit a symbol map instead:
+# drop "-s", add --emit-symbol-map (emscripten strips the name section itself).
+sys_env["LINKFLAGS"] = [f for f in sys_env["LINKFLAGS"] if f != "-s"]
+sys_env.Append(LINKFLAGS=["--emit-symbol-map"])
+
 for lib in sys_env["JS_LIBS"]:
     sys_env.Append(LINKFLAGS=["--js-library", lib.abspath])
 for js in sys_env["JS_PRE"]:
@@ -81,7 +87,7 @@ if len(env["EXPORTED_RUNTIME_METHODS"]):
     sys_env.Append(LINKFLAGS=["-sEXPORTED_RUNTIME_METHODS=" + repr(sorted(list(set(env["EXPORTED_RUNTIME_METHODS"]))))])
 
 build = []
-build_targets = ["#bin/godot${PROGSUFFIX}.js", "#bin/godot${PROGSUFFIX}.wasm"]
+build_targets = ["#bin/godot${PROGSUFFIX}.js", "#bin/godot${PROGSUFFIX}.wasm", "#bin/godot${PROGSUFFIX}.js.symbols"]
 if env["dlink_enabled"]:
     # Reset libraries. The main runtime will only link emscripten libraries, not godot ones.
     sys_env["LIBS"] = []
