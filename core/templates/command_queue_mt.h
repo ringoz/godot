@@ -38,6 +38,53 @@
 #include "core/templates/tuple.h"
 #include "core/typedefs.h"
 
+#include "core/io/image.h" // Ref<Image> deep-copy below
+// A queued command may execute after the caller returns, so any COW-buffer argument
+// (`Vector<T>` / Packed*Array, and `Ref<Image>` which owns a `Vector<uint8_t>`) must be
+// deep-copied at enqueue time — otherwise the caller mutating its shared buffer later leaves
+// the render/sim thread reading empty/corrupted data. Scalar/value args are unchanged.
+namespace thread_safe_arg {
+
+template <typename T>
+struct DeepCopy {
+	static T make(const T &p_val) { return p_val; }
+};
+
+// Buffer: detach the COW so this command owns its bytes.
+template <typename T>
+struct DeepCopy<Vector<T>> {
+	static Vector<T> make(const Vector<T> &p_val) {
+		Vector<T> owned = p_val;
+		owned.ptrw(); // copy-on-write detach
+		return owned;
+	}
+};
+
+// 3D texture layers: each Image inside must be duplicated, not just the outer Vector.
+template <typename T>
+struct DeepCopy<Vector<Ref<T>>> {
+	static Vector<Ref<T>> make(const Vector<Ref<T>> &p_val) {
+		Vector<Ref<T>> owned = p_val;
+		Ref<T> *w = owned.ptrw(); // copy-on-write detach, write accessor
+		for (int i = 0; i < (int)owned.size(); i++) {
+			if (w[i].is_valid()) {
+				w[i] = Ref<T>(w[i]->duplicate()); // duplicate (deep) then downcast
+			}
+		}
+		return owned;
+	}
+};
+
+// Texture image: duplicate so its data buffer is owned and stable.
+template <>
+struct DeepCopy<Ref<Image>> {
+	static Ref<Image> make(const Ref<Image> &p_val) {
+		return p_val.is_valid() ? Ref<Image>(p_val->duplicate()) : p_val;
+	}
+};
+
+} // namespace thread_safe_arg
+
 class CommandQueueMT {
 	static const size_t MAX_COMMAND_SIZE = 1024;
 
@@ -58,7 +105,8 @@ class CommandQueueMT {
 
 		template <typename... FwdArgs>
 		_FORCE_INLINE_ Command(T *p_instance, M p_method, FwdArgs &&...p_args) :
-				CommandBase(NeedsSync), instance(p_instance), method(p_method), args(std::forward<FwdArgs>(p_args)...) {}
+				CommandBase(NeedsSync), instance(p_instance), method(p_method),
+				args(thread_safe_arg::DeepCopy<GetSimpleTypeT<FwdArgs>>::make(std::forward<FwdArgs>(p_args))...) {}
 
 		void call() override {
 			call_impl(BuildIndexSequence<sizeof...(Args)>{});
@@ -85,7 +133,8 @@ class CommandQueueMT {
 		Tuple<GetSimpleTypeT<Args>...> args;
 
 		_FORCE_INLINE_ CommandRet(T *p_instance, M p_method, R *p_ret, GetSimpleTypeT<Args>... p_args) :
-				CommandBase(true), instance(p_instance), method(p_method), ret(p_ret), args{ p_args... } {}
+				CommandBase(true), instance(p_instance), method(p_method), ret(p_ret),
+				args(thread_safe_arg::DeepCopy<GetSimpleTypeT<Args>>::make(p_args)...) {}
 
 		void call() override {
 			*ret = call_impl(BuildIndexSequence<sizeof...(Args)>{});
