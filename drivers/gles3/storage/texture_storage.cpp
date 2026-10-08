@@ -2003,8 +2003,10 @@ void TextureStorage::_texture_set_data(RID p_texture, const Ref<Image> &p_image,
 
 	bool needs_decompress = texture->resize_to_po2;
 
-	// Support for RGTC-compressed Texture Arrays isn't mandated by GLES3/WebGL.
-	if (!RasterizerUtilGLES3::is_gles_over_gl() && texture->target == GL_TEXTURE_2D_ARRAY) {
+	// Support for RGTC-compressed Texture Arrays isn't mandated by GLES3/WebGL, so
+	// such an array is normally decoded to RGBA8 — but only when this build can
+	// decompress at all, or the decode is a no-op that logs an error per layer.
+	if (!RasterizerUtilGLES3::is_gles_over_gl() && texture->target == GL_TEXTURE_2D_ARRAY && Image::can_decompress("s3tc")) {
 		if (p_image->get_format() == Image::FORMAT_RGTC_R || p_image->get_format() == Image::FORMAT_RGTC_RG) {
 			needs_decompress = true;
 		}
